@@ -3,6 +3,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const missing = [];
+  if (!process.env.API_BASE_URL) missing.push('API_BASE_URL');
+  if (!process.env.API_KEY) missing.push('API_KEY');
+  if (missing.length > 0) {
+    return res.status(500).json({ error: `Missing env vars: ${missing.join(', ')}. Set them in Vercel → Settings → Environment Variables.` });
+  }
+
   const { productName, features } = req.body;
   if (!productName || !features) {
     return res.status(400).json({ error: 'Missing productName or features' });
