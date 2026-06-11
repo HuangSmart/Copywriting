@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CopyGenius - AI E-commerce Copy Generator</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh; color: #e4e4e7;
+}
+.header {
+  padding: 16px 24px; border-bottom: 1px solid #27272a;
+  display: flex; justify-content: space-between; align-items: center;
+  backdrop-filter: blur(12px);
+}
+.logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+.logo span { background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; min-height: calc(100vh - 69px); }
+@media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+.panel {
+  background: #1e1e2e; border: 1px solid #27272a; border-radius: 16px;
+  padding: 28px; display: flex; flex-direction: column; gap: 20px;
+}
+.panel-title { font-size: 16px; font-weight: 600; color: #a1a1aa; text-transform: uppercase; letter-spacing: 1px; }
+label { font-size: 14px; font-weight: 500; color: #d4d4d8; }
+input, textarea {
+  width: 100%; padding: 12px 16px; background: #27272a; border: 1px solid #3f3f46;
+  border-radius: 10px; color: #e4e4e7; font-size: 14px; font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, textarea:focus { outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.15); }
+textarea { resize: vertical; min-height: 120px; }
+.btn {
+  padding: 14px 24px; border-radius: 10px; font-size: 15px; font-weight: 600;
+  border: none; cursor: pointer; transition: all 0.2s; letter-spacing: -0.2px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  color: white; width: 100%;
+}
+.btn-primary:hover { box-shadow: 0 4px 20px rgba(129,140,248,0.4); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.output-area {
+  flex: 1; background: #18181b; border: 1px solid #27272a; border-radius: 10px;
+  padding: 20px; min-height: 300px; white-space: pre-wrap; line-height: 1.7;
+  font-size: 15px; overflow-y: auto;
+}
+.output-placeholder { color: #52525b; font-style: italic; }
+.btn-copy {
+  background: transparent; border: 1px solid #3f3f46; color: #a1a1aa;
+  padding: 10px 20px; border-radius: 8px; font-size: 13px;
+}
+.btn-copy:hover { background: #27272a; color: #e4e4e7; }
+.spinner {
+  display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite;
+  vertical-align: middle; margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error { color: #f87171; background: rgba(248,113,113,0.1); padding: 12px; border-radius: 8px; font-size: 14px; }
+.credit-badge { background: rgba(129,140,248,0.15); color: #a5b4fc; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><span>CopyGenius</span> AI</div>
+  <div class="credit-badge">Powered by DeepSeek</div>
+</header>
+
+<main class="container">
+  <div class="panel" id="input-panel">
+    <div class="panel-title">Product Info</div>
+    <div>
+      <label for="productName">Product Name</label>
+      <input id="productName" placeholder="e.g. Ergonomic Office Chair" maxlength="200">
+    </div>
+    <div>
+      <label for="features">Key Features</label>
+      <textarea id="features" placeholder="Describe the key selling points, one per line...&#10;e.g.&#10;Adjustable lumbar support&#10;Breathable mesh back&#10;5-year warranty"></textarea>
+    </div>
+    <button class="btn btn-primary" id="generateBtn" onclick="generate()">
+      Generate High-Converting Copy
+    </button>
+  </div>
+
+  <div class="panel" id="output-panel">
+    <div class="panel-title">Generated Copy</div>
+    <div class="output-area" id="output">
+      <span class="output-placeholder">Your AI-generated product copy will appear here...</span>
+    </div>
+    <button class="btn btn-copy" id="copyBtn" onclick="copyResult()" disabled>Copy to Clipboard</button>
+  </div>
+</main>
+
+<script>
+const BASE_URL = 'https://token-one-api.onrender.com/v1';
+const API_KEY = 'sk-11BtDa8DFJGoZH9L61805199Eb0c49Bb9e3a88Bd432dD848';
+
+async function generate() {
+  const productName = document.getElementById('productName').value.trim();
+  const features = document.getElementById('features').value.trim();
+  const btn = document.getElementById('generateBtn');
+  const output = document.getElementById('output');
+  const copyBtn = document.getElementById('copyBtn');
+
+  if (!productName || !features) {
+    output.innerHTML = '<span class="error">Please fill in both Product Name and Key Features.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating...';
+  output.innerHTML = '<span style="color:#a1a1aa;">AI is crafting your copy...</span>';
+  copyBtn.disabled = true;
+
+  const prompt = `You are a professional e-commerce copywriter. Write high-converting English product copy based on the following info.
+
+Product Name: ${productName}
+Key Features: ${features}
+
+Generate the following sections in clean Markdown format:
+1. **Product Title** - A compelling headline optimized for Amazon/Shopify
+2. **Bullet Points** - 5 key selling points (benefit-driven, not just feature list)
+3. **Product Description** - A persuasive 2-3 paragraph description using sensory language
+4. **SEO Keywords** - 10 high-intent search terms
+
+Make it ready to copy-paste into a store listing.`;
+
+  try {
+    const res = await fetch(`${BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.8
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`API error ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || 'No content returned.';
+    output.textContent = content;
+    copyBtn.disabled = false;
+  } catch (err) {
+    output.innerHTML = `<span class="error">${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generate High-Converting Copy';
+  }
+}
+
+function copyResult() {
+  const output = document.getElementById('output');
+  navigator.clipboard.writeText(output.textContent).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy to Clipboard'; }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
