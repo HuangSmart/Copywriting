@@ -62,13 +62,29 @@ textarea { resize: vertical; min-height: 120px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .error { color: #f87171; background: rgba(248,113,113,0.1); padding: 12px; border-radius: 8px; font-size: 14px; }
 .credit-badge { background: rgba(129,140,248,0.15); color: #a5b4fc; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+.btn-upgrade {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000; padding: 10px 20px; border-radius: 20px; font-size: 14px;
+  font-weight: 700; text-decoration: none; transition: all 0.2s;
+  border: none; cursor: pointer; white-space: nowrap;
+}
+.btn-upgrade:hover { box-shadow: 0 4px 20px rgba(245,158,11,0.5); transform: translateY(-1px); }
+.credit-info { font-size: 13px; color: #a1a1aa; text-align: center; }
+.credit-info span { color: #fbbf24; font-weight: 600; }
+.upgrade-banner {
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1));
+  border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 14px;
+  text-align: center; font-size: 14px; display: none;
+}
+.upgrade-banner a { color: #fbbf24; font-weight: 600; }
+.upgrade-banner a:hover { color: #f59e0b; }
 </style>
 </head>
 <body>
 
 <header class="header">
   <div class="logo"><span>CopyGenius</span> AI</div>
-  <div class="credit-badge">Powered by DeepSeek</div>
+  <a class="btn-upgrade" href="https://copygeniussmart.lemonsqueezy.com/checkout/buy/c22ffea0-6783-4ad2-a7fc-9bb10a671dfa" target="_blank" id="headerUpgradeBtn">Upgrade to Pro ($4.99)</a>
 </header>
 
 <main class="container">
@@ -85,6 +101,10 @@ textarea { resize: vertical; min-height: 120px; }
     <button class="btn btn-primary" id="generateBtn" onclick="generate()">
       Generate High-Converting Copy
     </button>
+    <div class="credit-info" id="creditInfo"></div>
+    <div class="upgrade-banner" id="upgradeBanner">
+      Free credits exhausted. <a href="https://copygeniussmart.lemonsqueezy.com/checkout/buy/c22ffea0-6783-4ad2-a7fc-9bb10a671dfa" target="_blank">Upgrade to Pro ($4.99)</a> for unlimited access!
+    </div>
   </div>
 
   <div class="panel" id="output-panel">
@@ -99,8 +119,46 @@ textarea { resize: vertical; min-height: 120px; }
 <script>
 const BASE_URL = 'https://token-one-api.onrender.com/v1';
 const API_KEY = 'sk-11BtDa8DFJGoZH9L61805199Eb0c49Bb9e3a88Bd432dD848';
+const MAX_FREE = 3;
+const CHECKOUT_URL = 'https://copygeniussmart.lemonsqueezy.com/checkout/buy/c22ffea0-6783-4ad2-a7fc-9bb10a671dfa';
+
+function getUsageCount() {
+  return parseInt(localStorage.getItem('copygenius_usage') || '0', 10);
+}
+
+function incrementUsage() {
+  const current = getUsageCount();
+  localStorage.setItem('copygenius_usage', current + 1);
+}
+
+function updateUI() {
+  const used = getUsageCount();
+  const remaining = Math.max(0, MAX_FREE - used);
+  const creditInfo = document.getElementById('creditInfo');
+  const upgradeBanner = document.getElementById('upgradeBanner');
+  const genBtn = document.getElementById('generateBtn');
+
+  if (remaining > 0) {
+    creditInfo.innerHTML = `<span>${remaining}</span> free ${remaining === 1 ? 'generation' : 'generations'} remaining`;
+    genBtn.disabled = false;
+    genBtn.innerHTML = 'Generate High-Converting Copy';
+    upgradeBanner.style.display = 'none';
+  } else {
+    creditInfo.innerHTML = '';
+    genBtn.disabled = true;
+    genBtn.innerHTML = 'Generate High-Converting Copy';
+    upgradeBanner.style.display = 'block';
+  }
+}
+
+updateUI();
 
 async function generate() {
+  if (getUsageCount() >= MAX_FREE) {
+    document.getElementById('upgradeBanner').style.display = 'block';
+    return;
+  }
+
   const productName = document.getElementById('productName').value.trim();
   const features = document.getElementById('features').value.trim();
   const btn = document.getElementById('generateBtn');
@@ -153,6 +211,8 @@ Make it ready to copy-paste into a store listing.`;
     const content = data.choices?.[0]?.message?.content || 'No content returned.';
     output.textContent = content;
     copyBtn.disabled = false;
+    incrementUsage();
+    updateUI();
   } catch (err) {
     output.innerHTML = `<span class="error">${err.message}</span>`;
   } finally {
