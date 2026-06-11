@@ -117,8 +117,6 @@ textarea { resize: vertical; min-height: 120px; }
 </main>
 
 <script>
-const BASE_URL = 'https://token-one-api.onrender.com/v1';
-const API_KEY = 'sk-11BtDa8DFJGoZH9L61805199Eb0c49Bb9e3a88Bd432dD848';
 const MAX_FREE = 3;
 const CHECKOUT_URL = 'https://copygeniussmart.lemonsqueezy.com/checkout/buy/c22ffea0-6783-4ad2-a7fc-9bb10a671dfa';
 
@@ -175,40 +173,20 @@ async function generate() {
   output.innerHTML = '<span style="color:#a1a1aa;">AI is crafting your copy...</span>';
   copyBtn.disabled = true;
 
-  const prompt = `You are a professional e-commerce copywriter. Write high-converting English product copy based on the following info.
-
-Product Name: ${productName}
-Key Features: ${features}
-
-Generate the following sections in clean Markdown format:
-1. **Product Title** - A compelling headline optimized for Amazon/Shopify
-2. **Bullet Points** - 5 key selling points (benefit-driven, not just feature list)
-3. **Product Description** - A persuasive 2-3 paragraph description using sensory language
-4. **SEO Keywords** - 10 high-intent search terms
-
-Make it ready to copy-paste into a store listing.`;
-
   try {
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
+    const res = await fetch('/api/proxy', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.8
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productName, features })
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`API error ${res.status}: ${text}`);
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Error ${res.status}`);
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content || 'No content returned.';
+    const content = data.content || 'No content returned.';
     output.textContent = content;
     copyBtn.disabled = false;
     incrementUsage();
